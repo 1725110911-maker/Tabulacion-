@@ -1,15 +1,12 @@
+import web
 import colorsys #nos permitira convertir valores hexa a hls para ordenarlos con los criterios que escribirmos
 
-import web
+render = web.template.render('views', base='layout')
 
-# Esto le dice a web.py que busque los archivos HTML en la carpeta 'views'
-render = web.template.render('views/')
+# Esta lista mantendrá los datos vivos en la memoria del servidor
+colores_ingresados = []
 
-class Index:
-    def GET(self):
-        # Esto renderiza el archivo index.html
-        return render.index()
-
+# --- LÓGICA DE COLORES ---
 def calc_priori(color):
     color = color.replace("#", "").lower() #Si el usuario escribe un # o en mayusculas arreglamos eso quitandolo y poniendolo en minusculas
 
@@ -31,17 +28,10 @@ def hexa_hsl(color): #de hex a hsl
     color = color.replace("#", "").lower()
 
 
-    #Esta linea me ayuda a procentar mejor: Los colores hexadecimales se dividen en rrvvaa rojo, verde, azul
-    #Como cada uno esta en base 16 le decimos a python que los interprete asi, y los convierta en rgb
-    #Asi por ejemplo... ff es 255
-    r = int(color[0:2], 16)
-    g = int(color[2:4], 16)
-    b = int(color[4:6], 16)
+    if len(color) == 3:
+        color = "".join([c*2 for c in color])
 
-
-    #Como la libreria trabaja con valores de 0 y 1 usamos esta divicion para no usar numeros tan grandes, dividiendolo entre 255
-    r, g, b = r / 255, g / 255, b / 255
-
+    r, g, b = int(color[0:2], 16) / 255.0, int(color[2:4], 16) / 255.0, int(color[4:6], 16) / 255.0
 
     #Aqui se hace la convercion real '.rgb_to_hls' nos devuelve valores del tono, luminosidad y saturacion del 0 al 1. Hace la matematica complicada que no quiero hacer
     tono, luminosidad, saturacion = colorsys.rgb_to_hls(r, g, b)
@@ -57,7 +47,7 @@ def hexa_hsl(color): #de hex a hsl
 def color_valido(color): #Todo lo necesario para que el color sea valido como tener 6 digitos y asi
     color = color.replace("#", "").lower()
 
-    if len(color) != 6:
+    if len(color) not in (3, 6): 
         return False
 
     carc_valido = "0123456789abcdef"
@@ -67,24 +57,51 @@ def color_valido(color): #Todo lo necesario para que el color sea valido como te
 
     return True
 
+# --- CONTROLADOR WEB ---
+class Index:
+    def GET(self):
+        # Solo leemos la variable global
+        global colores_ingresados
+        return render.index(colores_ingresados, "")
 
-def main():
-    colores_ingr = []  #Guardamos los colores que el usuario ingreso
+    def POST(self):
+        # Le decimos a Python que vamos a modificar la variable global
+        global colores_ingresados
+        
+        formulario = web.input(color="")
+        entrada = formulario.color.strip()
 
-    print("- -  COLORES HEXADECIMALES - -")
-    print("Escribe 'fin' cuando termines.\n")
+        # Botón para limpiar
+        if entrada.lower() == "limpiar":
+            colores_ingresados = []
+            return render.index(colores_ingresados, "Lista de colores limpiada exitosamente.")
 
-    
+        # Validación
+        if not color_valido(entrada):
+            return render.index(colores_ingresados, "Error: Color NO válido.")
 
+        color_limpio = "#" + entrada.replace("#", "").upper()
+        if len(color_limpio) == 4: 
+            color_limpio = "#" + "".join([c*2 for c in color_limpio[1:]])
 
-    #Como la lista esta ordenada en: entrada, puntaje, tono y saturacion, llendo del 0 al 3 x[2] es el tono y x[3] la saturacion
-    #Esto generara una lista diferente, donde use el tono y saturacion como bases, siendo la saturacion la forma de desempatar.
-    #El key=lambda es para que el .sort no lea todo, sino que vaya uno por uno
-    colores_ingr.sort(key=lambda x: (x[2], x[3]))
+        # Evitar duplicados
+        if not any(c['hex'] == color_limpio for c in colores_ingresados):
+            puntaje = calc_priori(entrada)
+            tono, saturacion = hexa_hsl(entrada)
+            
+            nuevo_color = {
+                'hex': color_limpio,
+                'puntaje': puntaje,
+                'tono': tono,
+                'saturacion': saturacion
+            }
+            colores_ingresados.append(nuevo_color)
 
-    print("\n- - COLORES ORDENADOS - -")
-    for color, puntaje, tono, saturacion in colores_ingr:
-        print(color)
+            # Ordenamos la lista global
+            colores_ingresados.sort(key=lambda x: (x['tono'], x['saturacion'], x['puntaje']))
+            
+            mensaje = f"Color {color_limpio} agregado."
+        else:
+            mensaje = "Error: Ese color ya está en la lista."
 
-
-main()
+        return render.index(colores_ingresados, mensaje)
