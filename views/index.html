@@ -1,0 +1,74 @@
+$def with (colores, mensaje)
+
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        
+        <!-- Título -->
+        <div class="text-center mb-4">
+            <h2 class="fw-bold"><i class="bi bi-palette-fill text-primary"></i> Ordenador de Colores</h2>
+            <p class="text-muted">Ingresa códigos hexadecimales para ordenarlos por tono y saturación.</p>
+        </div>
+
+        <!-- Tarjeta Principal -->
+        <div class="card shadow-sm border-0 rounded-4 mb-4">
+            <div class="card-body p-4">
+                
+                <!-- Alertas de mensajes -->
+                $if mensaje:
+                    $if "Error" in mensaje:
+                        <div class="alert alert-danger py-2">$mensaje</div>
+                    $else:
+                        <div class="alert alert-success py-2">$mensaje</div>
+
+                <!-- Formulario de Ingreso -->
+                <form method="POST" class="d-flex gap-2 mb-2">
+                    <input type="text" name="color" class="form-control form-control-lg bg-light" placeholder="Ej. #FF5733 o F00" required autocomplete="off">
+                    <button type="submit" class="btn btn-primary btn-lg fw-bold px-4">Agregar</button>
+                </form>
+
+                <!-- Botón de limpiar -->
+                <form method="POST" class="text-end mb-4">
+                    <input type="hidden" name="color" value="limpiar">
+                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                        <i class="bi bi-trash3"></i> Limpiar Lista
+                    </button>
+                </form>
+
+                <!-- Tabla de Resultados -->
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle mb-0 text-center">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Muestra</th>
+                                <th>Color (Hex)</th>
+                                <th>Tono (°)</th>
+                                <th>Saturación (%)</th>
+                                <th>Prioridad</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            $if not colores:
+                                <tr>
+                                    <td colspan="5" class="text-muted py-4">Aún no hay colores ingresados.</td>
+                                </tr>
+                            $else:
+                                $for c in colores:
+                                    <tr>
+                                        <!-- Usamos el hexadecimal guardado para pintar el div con CSS inline -->
+                                        <td>
+                                            <div class="mx-auto shadow-sm" style="width: 35px; height: 35px; background-color: $c['hex']; border-radius: 50%; border: 2px solid #e9ecef;"></div>
+                                        </td>
+                                        <td class="fw-bold text-secondary">$c['hex']</td>
+                                        <td>$("{:.1f}".format(c['tono']))°</td>
+                                        <td>$("{:.1f}".format(c['saturacion']))%</td>
+                                        <td><span class="badge bg-secondary">$c['puntaje']</span></td>
+                                    </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+            </div>
+        </div>
+        
+    </div>
+</div>
